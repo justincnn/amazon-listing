@@ -471,8 +471,25 @@
             }
         }
 
-        function exportHistory() {
-            window.location.href = '/api/history/export';
+        async function exportHistory() {
+            try {
+                const response = await fetchWithAuth('/api/history/export');
+                if (!response.ok) {
+                    throw new Error('Failed to download CSV.');
+                }
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'listings_history.csv';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                alert(`Error exporting history: ${error.message}`);
+            }
         }
 
         // --- Event Listeners ---
