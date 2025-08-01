@@ -104,8 +104,11 @@ def generate_listing():
     # The master_prompt from the frontend should now contain the product info
     payload = {
         "model": model_name,
-        "prompt": master_prompt, # Use the prompt directly
-        "stream": False # Ensure we get a single JSON response
+        "messages": [
+            {"role": "user", "content": master_prompt}
+        ],
+        "response_format": {"type": "json_object"},
+        "stream": False
     }
 
     try:
@@ -114,7 +117,8 @@ def generate_listing():
         
         # The expected response from the LLM is a JSON string.
         # We parse the content of the response, and then parse that JSON string.
-        llm_response_content = response.json().get('response', '{}')
+        # Standard OpenAI API response structure
+        llm_response_content = response.json()['choices'][0]['message']['content']
         generated_data = json.loads(llm_response_content)
 
         return jsonify({
