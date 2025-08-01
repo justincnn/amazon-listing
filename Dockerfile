@@ -18,7 +18,6 @@ WORKDIR /app
 
 # Create a non-root user
 RUN useradd --create-home appuser
-USER appuser
 
 # Copy python dependencies from builder stage
 COPY --from=builder /app/wheels /wheels
@@ -27,9 +26,12 @@ RUN pip install --no-cache /wheels/*
 # Copy application code
 COPY . .
 
-# Create database directory and set permissions
+# Create database directory and change ownership of the app directory
 RUN mkdir -p /app/database
-RUN chown -R appuser:appuser /app/database
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose port and run the application
 EXPOSE 5001
