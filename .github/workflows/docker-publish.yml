@@ -25,6 +25,8 @@ jobs:
       uses: docker/metadata-action@v4
       with:
         images: justincnn/listinggenius
+        tags: |
+          type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
