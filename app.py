@@ -57,7 +57,7 @@ def require_password(f):
             if request.path.startswith('/api/'):
                  return jsonify({"error": "Unauthorized"}), 401
             # For page loads, render login
-            return render_template('login.html')
+            return render_template('index.html')
         return f(*args, **kwargs)
     return decorated_function
 
@@ -77,7 +77,7 @@ def login():
             return jsonify({"success": True})
         else:
             return jsonify({"success": False, "message": "Incorrect password"}), 401
-    return render_template('login.html')
+    return render_template('index.html')
 
 @app.route('/api/generate', methods=['POST'])
 @require_password
