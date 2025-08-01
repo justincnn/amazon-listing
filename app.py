@@ -26,13 +26,7 @@ def close_db(exception):
         db.close()
 
 def init_db():
-    with app.app_context():
-        db = get_db()
-        with app.open_resource('schema.sql', mode='r') as f:
-            db.cursor().executescript(f.read())
-        db.commit()
-
-def create_schema_sql_if_not_exists():
+    db = get_db()
     schema_content = """
     CREATE TABLE IF NOT EXISTS listings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,9 +37,19 @@ def create_schema_sql_if_not_exists():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     """
-    if not os.path.exists('schema.sql'):
-        with open('schema.sql', 'w') as f:
-            f.write(schema_content)
+    db.cursor().executescript(schema_content)
+    db.commit()
+
+@app.before_first_request
+def setup():
+    # Create the database and tables if they don't exist
+    db_path = app.config['DATABASE']
+    if not os.path.exists(os.path.dirname(db_path)):
+        os.makedirs(os.path.dirname(db_path))
+    
+    # This will create the db file and tables if they don't exist
+    with app.app_context():
+        init_db()
 
 # --- Password Protection ---
 def require_password(f):
@@ -151,8 +155,4 @@ def get_history():
 
 # --- Main Execution ---
 if __name__ == '__main__':
-    create_schema_sql_if_not_exists()
-    # Initialize the database if it doesn't exist
-    if not os.path.exists(app.config['DATABASE']):
-        init_db()
     app.run(host='0.0.0.0', port=5001, debug=True)
