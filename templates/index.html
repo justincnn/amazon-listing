@@ -265,7 +265,7 @@ Product Information:
                         api_url: selectors.apiUrl.value,
                         api_key: selectors.apiKey.value,
                         model_name: selectors.modelName.value,
-                        master_prompt: selectors.masterPrompt.value,
+                        master_prompt: selectors.masterPrompt.value.replace('{product_info}', selectors.productInfo.value),
                     }),
                 });
 

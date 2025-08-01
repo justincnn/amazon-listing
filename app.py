@@ -101,11 +101,10 @@ def generate_listing():
         'Content-Type': 'application/json'
     }
     
-    prompt_with_product_info = master_prompt.format(product_info=product_info)
-    
+    # The master_prompt from the frontend should now contain the product info
     payload = {
         "model": model_name,
-        "prompt": prompt_with_product_info,
+        "prompt": master_prompt, # Use the prompt directly
         "stream": False # Ensure we get a single JSON response
     }
 
