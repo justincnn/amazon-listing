@@ -92,8 +92,9 @@ def generate_listing():
     api_key = data.get('api_key')
     model_name = data.get('model_name')
     master_prompt = data.get('master_prompt')
+    field_to_generate = data.get('field_to_generate') # New field
 
-    if not all([product_info, api_url, api_key, model_name, master_prompt]):
+    if not all([product_info, api_url, api_key, model_name, master_prompt, field_to_generate]):
         return jsonify({"error": "Missing required fields for generation."}), 400
 
     headers = {
@@ -130,10 +131,12 @@ def generate_listing():
 
         generated_data = json.loads(llm_response_content)
 
+        # Return only the requested field
+        if field_to_generate not in generated_data:
+             return jsonify({"error": f"LLM did not return the expected field '{field_to_generate}' in its response."}), 500
+        
         return jsonify({
-            "title": generated_data.get("title", ""),
-            "bullets": generated_data.get("bullets", []),
-            "description": generated_data.get("description", "")
+            field_to_generate: generated_data[field_to_generate]
         })
 
     except requests.exceptions.RequestException as e:
@@ -164,6 +167,44 @@ def get_history():
     listings = cursor.fetchall()
     # Convert rows to dictionaries to be jsonified
     return jsonify([dict(row) for row in listings])
+
+@app.route('/api/history/<int:id>', methods=['DELETE'])
+@require_password
+def delete_listing(id):
+    db = get_db()
+    db.execute('DELETE FROM listings WHERE id = ?', (id,))
+    db.commit()
+    return jsonify({"success": True, "message": "Listing deleted."})
+
+@app.route('/api/history/export', methods=['GET'])
+@require_password
+def export_listings():
+    db = get_db()
+    cursor = db.execute('SELECT * FROM listings ORDER BY created_at DESC')
+    listings = cursor.fetchall()
+    
+    # Create a CSV in memory
+    import csv
+    import io
+    from flask import Response
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow(['id', 'product_info', 'title', 'bullets', 'description', 'created_at'])
+    
+    # Write rows
+    for row in listings:
+        writer.writerow([row['id'], row['product_info'], row['title'], row['bullets'], row['description'], row['created_at']])
+    
+    output.seek(0)
+    
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=listings_history.csv"}
+    )
 
 # --- Main Execution ---
 if __name__ == '__main__':
