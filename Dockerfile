@@ -1,8 +1,38 @@
-# Use a lightweight base image
-FROM alpine:latest
+# Stage 1: Build stage with build-essentials
+FROM python:3.11-slim as builder
 
-# Set the working directory
 WORKDIR /app
 
-# A command to run when the container starts
-CMD ["echo", "Hello from Docker!"]
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
+
+
+# Stage 2: Final production stage
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Create a non-root user
+RUN useradd --create-home appuser
+USER appuser
+
+# Copy python dependencies from builder stage
+COPY --from=builder /app/wheels /wheels
+RUN pip install --no-cache /wheels/*
+
+# Copy application code
+COPY . .
+
+# Create database directory and set permissions
+RUN mkdir -p /app/database
+RUN chown -R appuser:appuser /app/database
+
+# Expose port and run the application
+EXPOSE 5001
+
+# Set the entrypoint
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "app:app"]
