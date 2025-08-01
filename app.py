@@ -119,6 +119,15 @@ def generate_listing():
         # We parse the content of the response, and then parse that JSON string.
         # Standard OpenAI API response structure
         llm_response_content = response.json()['choices'][0]['message']['content']
+        
+        # Clean the response content by removing markdown code block fences
+        if llm_response_content.startswith("```json"):
+            llm_response_content = llm_response_content[7:]
+        if llm_response_content.endswith("```"):
+            llm_response_content = llm_response_content[:-3]
+        
+        llm_response_content = llm_response_content.strip()
+
         generated_data = json.loads(llm_response_content)
 
         return jsonify({
