@@ -108,7 +108,7 @@ def generate_listing():
         "messages": [
             {"role": "user", "content": master_prompt}
         ],
-        "response_format": {"type": "json_object"},
+        # "response_format": {"type": "json_object"}, # Temporarily disable to allow for plain text responses
         "stream": False
     }
 
@@ -142,7 +142,11 @@ def generate_listing():
     except requests.exceptions.RequestException as e:
         return jsonify({"error": f"API request failed: {str(e)}"}), 500
     except json.JSONDecodeError:
-        return jsonify({"error": "Failed to parse LLM response. Ensure it returns valid JSON."}), 500
+        # If JSON parsing fails, assume it's a plain text response as requested by the prompt.
+        # Wrap the plain text response in the expected JSON structure.
+        return jsonify({
+            field_to_generate: llm_response_content
+        })
     except Exception as e:
         return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
