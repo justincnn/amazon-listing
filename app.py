@@ -133,7 +133,13 @@ def generate_listing():
 
         # Return only the requested field
         if field_to_generate not in generated_data:
-             return jsonify({"error": f"LLM did not return the expected field '{field_to_generate}' in its response."}), 500
+            # If the expected field is missing, and it's 'bullets', try to parse the whole response as a list
+            if field_to_generate == 'bullets' and isinstance(llm_response_content, str):
+                # Assume the response is a newline-separated list of bullets
+                bullets = [b.strip() for b in llm_response_content.strip().split('\n') if b.strip()]
+                return jsonify({'bullets': bullets})
+            else:
+                 return jsonify({"error": f"LLM did not return the expected field '{field_to_generate}' in its response."}), 500
         
         return jsonify({
             field_to_generate: generated_data[field_to_generate]
@@ -142,11 +148,16 @@ def generate_listing():
     except requests.exceptions.RequestException as e:
         return jsonify({"error": f"API request failed: {str(e)}"}), 500
     except json.JSONDecodeError:
-        # If JSON parsing fails, assume it's a plain text response as requested by the prompt.
-        # Wrap the plain text response in the expected JSON structure.
-        return jsonify({
-            field_to_generate: llm_response_content
-        })
+        # If JSON parsing fails, it might be a plain text response.
+        if field_to_generate == 'bullets':
+            # If we were expecting bullets, try to parse the text as a list of lines.
+            bullets = [b.strip() for b in llm_response_content.strip().split('\n') if b.strip()]
+            return jsonify({'bullets': bullets})
+        else:
+            # Otherwise, return the plain text as is, wrapped in the expected field.
+            return jsonify({
+                field_to_generate: llm_response_content
+            })
     except Exception as e:
         return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
