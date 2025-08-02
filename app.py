@@ -153,8 +153,21 @@ def generate_listing():
     except json.JSONDecodeError:
         # If JSON parsing fails, it might be a plain text response.
         if field_to_generate == 'bullets':
-            # If we were expecting bullets, try to parse the text as a list of lines.
-            bullets = [b.strip() for b in llm_response_content.strip().split('\n') if b.strip()]
+            # It might be a newline-separated list, possibly with artifacts like `[` or `*`.
+            lines = llm_response_content.strip().split('\n')
+            bullets = []
+            for line in lines:
+                clean_line = line.strip()
+                # Remove list markers, commas, quotes, and brackets
+                if clean_line.startswith('* '):
+                    clean_line = clean_line[2:]
+                if clean_line.startswith('- '):
+                    clean_line = clean_line[2:]
+                
+                clean_line = clean_line.strip('[],"\' ')
+                
+                if clean_line:
+                    bullets.append(clean_line)
             return jsonify({'bullets': bullets})
         else:
             # Otherwise, return the plain text as is, wrapped in the expected field.
