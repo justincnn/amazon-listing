@@ -129,21 +129,24 @@ def generate_listing():
         
         llm_response_content = llm_response_content.strip()
 
+        # Attempt to parse the cleaned response as JSON
         generated_data = json.loads(llm_response_content)
 
-        # Return only the requested field
-        if field_to_generate not in generated_data:
-            # If the expected field is missing, and it's 'bullets', try to parse the whole response as a list
-            if field_to_generate == 'bullets' and isinstance(llm_response_content, str):
-                # Assume the response is a newline-separated list of bullets
-                bullets = [b.strip() for b in llm_response_content.strip().split('\n') if b.strip()]
-                return jsonify({'bullets': bullets})
-            else:
-                 return jsonify({"error": f"LLM did not return the expected field '{field_to_generate}' in its response."}), 500
+        # Handle different structures for 'bullets'
+        if field_to_generate == 'bullets':
+            if isinstance(generated_data, list):
+                # Case 1: The entire response is a JSON array of bullets
+                return jsonify({'bullets': generated_data})
+            elif isinstance(generated_data, dict) and 'bullets' in generated_data:
+                # Case 2: The response is a JSON object with a 'bullets' key
+                return jsonify({'bullets': generated_data['bullets']})
         
-        return jsonify({
-            field_to_generate: generated_data[field_to_generate]
-        })
+        # Handle other fields or fall through if 'bullets' structure is unexpected
+        if isinstance(generated_data, dict) and field_to_generate in generated_data:
+             return jsonify({field_to_generate: generated_data[field_to_generate]})
+
+        # If we reach here, the structure is not what we expected
+        return jsonify({"error": f"LLM response for '{field_to_generate}' was not in the expected format."}), 500
 
     except requests.exceptions.RequestException as e:
         return jsonify({"error": f"API request failed: {str(e)}"}), 500
