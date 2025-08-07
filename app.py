@@ -130,20 +130,7 @@ def generate_listing():
 
         if field_to_generate == 'bullets':
             # The LLM should return a newline-separated list of bullet points.
-            lines = llm_response_content.strip().split('\n')
-            bullets = []
-            for line in lines:
-                clean_line = line.strip()
-                # Remove common list markers, commas, quotes, and brackets
-                if clean_line.startswith('* '):
-                    clean_line = clean_line[2:]
-                if clean_line.startswith('- '):
-                    clean_line = clean_line[2:]
-                
-                clean_line = clean_line.strip('[],"\' ')
-                
-                if clean_line:
-                    bullets.append(clean_line)
+            bullets = [line.strip() for line in llm_response_content.strip().split('\n') if line.strip()]
             return jsonify({'bullets': bullets})
         else:
             # For title and description, return the plain text as is.
