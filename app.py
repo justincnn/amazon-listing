@@ -115,50 +115,26 @@ def generate_listing():
     try:
         response = requests.post(api_url, headers=headers, json=payload, timeout=90)
         response.raise_for_status()
-        
-        # The expected response from the LLM is a JSON string.
-        # We parse the content of the response, and then parse that JSON string.
-        # Standard OpenAI API response structure
+
         llm_response_content = response.json()['choices'][0]['message']['content']
         
         # Clean the response content by removing markdown code block fences
         if llm_response_content.startswith("```json"):
             llm_response_content = llm_response_content[7:]
+        if llm_response_content.startswith("```"):
+            llm_response_content = llm_response_content[3:]
         if llm_response_content.endswith("```"):
             llm_response_content = llm_response_content[:-3]
         
         llm_response_content = llm_response_content.strip()
 
-        # Attempt to parse the cleaned response as JSON
-        generated_data = json.loads(llm_response_content)
-
-        # Handle different structures for 'bullets'
         if field_to_generate == 'bullets':
-            if isinstance(generated_data, list):
-                # Case 1: The entire response is a JSON array of bullets
-                return jsonify({'bullets': generated_data})
-            elif isinstance(generated_data, dict) and 'bullets' in generated_data:
-                # Case 2: The response is a JSON object with a 'bullets' key
-                return jsonify({'bullets': generated_data['bullets']})
-        
-        # Handle other fields or fall through if 'bullets' structure is unexpected
-        if isinstance(generated_data, dict) and field_to_generate in generated_data:
-             return jsonify({field_to_generate: generated_data[field_to_generate]})
-
-        # If we reach here, the structure is not what we expected
-        return jsonify({"error": f"LLM response for '{field_to_generate}' was not in the expected format."}), 500
-
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": f"API request failed: {str(e)}"}), 500
-    except json.JSONDecodeError:
-        # If JSON parsing fails, it might be a plain text response.
-        if field_to_generate == 'bullets':
-            # It might be a newline-separated list, possibly with artifacts like `[` or `*`.
+            # The LLM should return a newline-separated list of bullet points.
             lines = llm_response_content.strip().split('\n')
             bullets = []
             for line in lines:
                 clean_line = line.strip()
-                # Remove list markers, commas, quotes, and brackets
+                # Remove common list markers, commas, quotes, and brackets
                 if clean_line.startswith('* '):
                     clean_line = clean_line[2:]
                 if clean_line.startswith('- '):
@@ -170,11 +146,15 @@ def generate_listing():
                     bullets.append(clean_line)
             return jsonify({'bullets': bullets})
         else:
-            # Otherwise, return the plain text as is, wrapped in the expected field.
+            # For title and description, return the plain text as is.
             return jsonify({
                 field_to_generate: llm_response_content
             })
+
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": f"API request failed: {str(e)}"}), 500
     except Exception as e:
+        # Catch other potential errors, like issues with the LLM response structure
         return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
 
